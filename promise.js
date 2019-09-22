@@ -7,6 +7,7 @@ function isThenable(p) {
 }
 
 // TODO: rename
+// TODO: allow multiple then's
 function Thenable(f) {
     let thenable;
 
@@ -22,7 +23,7 @@ function Thenable(f) {
     return {
         "then": function(nextf) {
             thenable = Thenable(nextf);
-            return thenable.then;
+            return thenable;
         },
 
         // TODO: multiple arguments
@@ -37,30 +38,25 @@ function Thenable(f) {
 }
 
 function Promise(action) {
-    let callbacksOnResolve = [];
-    let callbacksOnReject = [];
+    let onResolveThenables = [];
+
     // TODO: make it work with multiple then's (that are parallel, not chained)
-    let thenable;
+    let callbacksOnReject = [];
 
     const then = function(onResolve, onReject) {
-        callbacksOnResolve.push(onResolve);
+        let thenable = Thenable(onResolve);
+        onResolveThenables.push(thenable);
+
         callbacksOnReject.push(onReject);
-        return {
-            "then": function(f) {
-                thenable = Thenable(f);
-                return thenable;
-            }
-        };
+
+        return thenable;
     }
 
     // TODO: multiple arguments
     const resolve = function(text) {
-        const onResolve = callbacksOnResolve[0];
-        const result = onResolve(text);
-        if (thenable === undefined) {
-            return;
+        for (onResolveThenable of onResolveThenables) {
+            onResolveThenable.execute(text);
         }
-        thenable.execute(result);
     }; 
 
     // TODO: multiple arguments
@@ -147,4 +143,4 @@ register_test("chaining_with_chained_promise", function test_chaining_simple() {
 
 /*--------------- RUN TESTS ----------------*/
 
-run_test("chaining_with_chained_promise");
+run_test("chaining_simple");
