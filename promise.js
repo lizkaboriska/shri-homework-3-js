@@ -1,9 +1,11 @@
 // TODO: 1. check Promise doesn't exist
 // TODO: 2. make it globally accessible somehow
-
 // TODO: 3. do validation
 
-// TODO: can i do then multiple times here??
+function isThenable(p) {
+    return p !== undefined && typeof p.then === 'function';
+}
+
 function Thenable(f) {
     let thenable;
 
@@ -12,9 +14,27 @@ function Thenable(f) {
             thenable = Thenable(nextf);
             return thenable.then;
         },
+
         // TODO: multiple arguments
         "execute": function(args) {
+            // what to do with result?
+            if (isThenable(args)) {
+                // async then
+                args.then(function(res) {
+                    let nextres = f(res);
+
+                    // TODO: copypaste
+                    if (thenable === undefined) {
+                        return nextres;
+                    }
+                    return thenable.execute(nextres);
+                })
+                return;
+            }
+
+            // synchronous then
             let result = f(args);
+
             if (thenable === undefined) {
                 return result;
             }
@@ -105,7 +125,26 @@ register_test("chaining_simple", function test_chaining_simple() {
         return "then to then invoked";
     }).then(function(text){
         console.log(text);
-        return "and another one";
+    });
+
+    console.log("after promise created");
+})
+
+register_test("chaining_with_chained_promise", function test_chaining_simple() {
+    const p = Promise(function(resolve, reject) {
+        setTimeout(function() {
+            resolve("hello world!");
+        }, 1000);
+    }).then(function(text){
+        console.log(text);
+        return Promise(function(resolve, reject) {
+            setTimeout(function() {
+                resolve("then to then invoked");
+            }, 1000);
+        });
+    }).then(function(text){
+        console.log(text);
+        return "synchronous then";
     }).then(function(text){
         console.log(text);
     });
@@ -113,7 +152,6 @@ register_test("chaining_simple", function test_chaining_simple() {
     console.log("after promise created");
 })
 
-
 /*--------------- RUN TESTS ----------------*/
 
-run_test("chaining_simple");
+run_test("chaining_with_chained_promise");
