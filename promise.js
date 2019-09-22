@@ -6,8 +6,18 @@ function isThenable(p) {
     return p !== undefined && typeof p.then === 'function';
 }
 
+// TODO: rename
 function Thenable(f) {
     let thenable;
+
+    function executeNonThenable(res) {
+        let nextres = f(res);
+
+        if (thenable === undefined) {
+            return nextres;
+        }
+        return thenable.execute(nextres);
+    }
 
     return {
         "then": function(nextf) {
@@ -17,28 +27,11 @@ function Thenable(f) {
 
         // TODO: multiple arguments
         "execute": function(args) {
-            // what to do with result?
             if (isThenable(args)) {
-                // async then
-                args.then(function(res) {
-                    let nextres = f(res);
-
-                    // TODO: copypaste
-                    if (thenable === undefined) {
-                        return nextres;
-                    }
-                    return thenable.execute(nextres);
-                })
-                return;
+                args.then(executeNonThenable);
+            } else {
+                executeNonThenable(args);
             }
-
-            // synchronous then
-            let result = f(args);
-
-            if (thenable === undefined) {
-                return result;
-            }
-            return thenable.execute(result);
         }
     }
 }
