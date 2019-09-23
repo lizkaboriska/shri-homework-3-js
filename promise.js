@@ -67,9 +67,7 @@ function Promise(action) {
             const thenable = thenables[i];
             if (onResolve !== undefined) {
                 const res = onResolve(arg);
-                if (thenable !== undefined) {
-                    thenable.execute(res);
-                }
+                thenable.execute(res);
             }
         }
     }; 
@@ -80,9 +78,7 @@ function Promise(action) {
             const thenable = thenables[i];
             if (onReject !== undefined) {
                 const res = onReject(arg);
-                if (thenable !== undefined) {
-                    thenable.execute(res);
-                }
+                thenable.execute(res);
             }
         }
     }; 
