@@ -20,9 +20,7 @@ function Thenable() {
         return function(arg) {
             if (onExecute !== undefined) {
                 let res = onExecute(arg);
-                if (thenable !== undefined) {
-                    thenable.execute(res);
-                }
+                thenable.execute(res);
             }
         }
     }
