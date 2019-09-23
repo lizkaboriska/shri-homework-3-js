@@ -6,24 +6,28 @@ function isThenable(p) {
     return p !== undefined && typeof p.then === 'function';
 }
 
-// TODO: rename
+// TODO: rename (maybe DelayedChainableFunction? but its also promise aware...)
 // TODO: allow multiple then's
 function Thenable(f) {
-    let thenable;
+    let nextThenables = [];
 
     function executeNonThenable(res) {
         let nextres = f(res);
 
-        if (thenable === undefined) {
+        if (nextThenables.length === 0) {
             return nextres;
         }
-        return thenable.execute(nextres);
+        for (let nextThenable of nextThenables) {
+            nextThenable.execute(nextres);
+        }
     }
 
     return {
+        // TODO: support onReject here (2nd parameter)
         "then": function(nextf) {
-            thenable = Thenable(nextf);
-            return thenable;
+            let t = Thenable(nextf);
+            nextThenables.push(t);
+            return t;
         },
 
         // TODO: multiple arguments
@@ -141,6 +145,30 @@ register_test("chaining_with_chained_promise", function test_chaining_simple() {
     console.log("after promise created");
 })
 
+register_test("parallel_thens_to_first_then", function test_chaining_simple() {
+    const p = Promise(function(resolve, reject) {
+        setTimeout(function() {
+            resolve("hello world!");
+        }, 1000);
+    }).then(function(text){
+        console.log(text);
+        return Promise(function(resolve, reject) {
+            setTimeout(function() {
+                resolve("then to then invoked");
+            }, 1000);
+        });
+    });
+
+    p.then(function(text){
+        console.log(text + ' 1');
+    });
+    p.then(function(text){
+        console.log(text + ' 2');
+    });
+
+    console.log("after promise created");
+})
+
 /*--------------- RUN TESTS ----------------*/
 
-run_test("chaining_simple");
+run_test("parallel_thens_to_first_then");
