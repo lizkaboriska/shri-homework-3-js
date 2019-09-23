@@ -9,15 +9,15 @@ function isThenable(p) {
 
 function Thenable() {
     let nextThenables = [];
-    let callbacksOnExecute = [];
+    let callbacksOnResolve = [];
 
-    function getExecuteSyncIth(i) {
-        const onExecute = callbacksOnExecute[i];
+    function getResolveSyncIth(i) {
+        const onResolve = callbacksOnResolve[i];
         const thenable = nextThenables[i];
 
         return function(arg) {
-            if (onExecute !== undefined) {
-                let res = onExecute(arg);
+            if (onResolve !== undefined) {
+                let res = onResolve(arg);
                 thenable.execute(res);
             }
         }
@@ -26,7 +26,7 @@ function Thenable() {
     return {
         // TODO: support onReject here (2nd parameter)
         "then": function(f) {
-            callbacksOnExecute.push(f);
+            callbacksOnResolve.push(f);
 
             let t = Thenable();
             nextThenables.push(t);
@@ -34,13 +34,13 @@ function Thenable() {
         },
 
         "execute": function(args) {
-            for (let i = 0; i < callbacksOnExecute.length; ++i) {
-                const executeSync = getExecuteSyncIth(i);
+            for (let i = 0; i < callbacksOnResolve.length; ++i) {
+                const resolveSync = getResolveSyncIth(i);
 
                 if (isThenable(args)) {
-                    args.then(executeSync);
+                    args.then(resolveSync);
                 } else {
-                    executeSync(args);
+                    resolveSync(args);
                 }
             }
         }
