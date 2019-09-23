@@ -1,6 +1,7 @@
 // TODO: 1. check Promise doesn't exist
 // TODO: 2. make it globally accessible somehow
 // TODO: 3. do validation
+// TODO: 4. catch throws!
 
 function isThenable(p) {
     return p !== undefined && typeof p.then === 'function';
@@ -8,65 +9,85 @@ function isThenable(p) {
 
 // TODO: rename (maybe DelayedChainableFunction? but its also promise aware...)
 // TODO: allow multiple then's
-function Thenable(f) {
+function Thenable() {
     let nextThenables = [];
+    let callbacksOnExecute = [];
 
-    function executeNonThenable(res) {
-        let nextres = f(res);
+    function getExecuteSyncIth(i) {
+        const onExecute = callbacksOnExecute[i];
+        const thenable = nextThenables[i];
 
-        if (nextThenables.length === 0) {
-            return nextres;
-        }
-        for (let nextThenable of nextThenables) {
-            nextThenable.execute(nextres);
+        return function(arg) {
+            if (onExecute !== undefined) {
+                let res = onExecute(arg);
+                if (thenable !== undefined) {
+                    thenable.execute(res);
+                }
+            }
         }
     }
 
     return {
         // TODO: support onReject here (2nd parameter)
-        "then": function(nextf) {
-            let t = Thenable(nextf);
+        "then": function(f) {
+            callbacksOnExecute.push(f);
+
+            let t = Thenable();
             nextThenables.push(t);
             return t;
         },
 
-        // TODO: multiple arguments
         "execute": function(args) {
-            if (isThenable(args)) {
-                args.then(executeNonThenable);
-            } else {
-                executeNonThenable(args);
+            for (let i = 0; i < callbacksOnExecute.length; ++i) {
+                const executeSync = getExecuteSyncIth(i);
+
+                if (isThenable(args)) {
+                    args.then(executeSync);
+                } else {
+                    executeSync(args);
+                }
             }
         }
     }
 }
 
 function Promise(action) {
-    let onResolveThenables = [];
-
-    // TODO: make it work with multiple then's (that are parallel, not chained)
+    let thenables = [];
     let callbacksOnReject = [];
+    let callbacksOnResolve = [];
 
     const then = function(onResolve, onReject) {
-        let thenable = Thenable(onResolve);
-        onResolveThenables.push(thenable);
-
+        callbacksOnResolve.push(onResolve);
         callbacksOnReject.push(onReject);
 
-        return thenable;
+        let t = Thenable();
+        thenables.push(t);
+        return t;
     }
 
-    // TODO: multiple arguments
-    const resolve = function(text) {
-        for (onResolveThenable of onResolveThenables) {
-            onResolveThenable.execute(text);
+    const resolve = function(arg) {
+        for (let i = 0; i < thenables.length; i++) {
+            const onResolve = callbacksOnResolve[i];
+            const thenable = thenables[i];
+            if (onResolve !== undefined) {
+                const res = onResolve(arg);
+                if (thenable !== undefined) {
+                    thenable.execute(res);
+                }
+            }
         }
     }; 
 
-    // TODO: multiple arguments
-    const reject = function() {
-        for (const onReject of callbacksOnReject) {
-            onReject(text);
+    const reject = function(arg) {
+        for (let i = 0; i < thenables.length; i++) {
+            const onReject = callbacksOnReject[i];
+            const thenable = thenables[i];
+            if (onReject !== undefined) {
+                const res = onReject(arg);
+                if (thenable !== undefined) {
+                    thenable.execute(res);
+                }
+            }
         }
     }; 
 
@@ -169,6 +190,16 @@ register_test("parallel_thens_to_first_then", function test_chaining_simple() {
     console.log("after promise created");
 })
 
+register_test("simple_catch", function test_chaining_simple() {
+    const p = Promise(function(resolve, reject) {
+        setTimeout(function() {
+            reject("hello world!");
+        }, 1000);
+    }).then(undefined, function(text){
+        console.log("catch invoked with: %s", text);
+    });
+})
+
 /*--------------- RUN TESTS ----------------*/
 
-run_test("parallel_thens_to_first_then");
+run_test("chaining_with_chained_promise");
