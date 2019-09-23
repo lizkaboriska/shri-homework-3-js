@@ -10,6 +10,7 @@ function isThenable(p) {
 function Thenable() {
     let nextThenables = [];
     let callbacksOnResolve = [];
+    let callbacksOnReject = [];
 
     function getResolveSyncIth(i) {
         const onResolve = callbacksOnResolve[i];
@@ -23,10 +24,22 @@ function Thenable() {
         }
     }
 
+    function getRejectSyncIth(i) {
+        const onReject = callbacksOnReject[i];
+        const thenable = nextThenables[i];
+
+        return function(arg) {
+            if (onReject !== undefined) {
+                let res = onReject(arg);
+                thenable.execute(res);
+            }
+        }
+    }
+
     return {
-        // TODO: support onReject here (2nd parameter)
-        "then": function(f) {
-            callbacksOnResolve.push(f);
+        "then": function(onResolve, onReject) {
+            callbacksOnResolve.push(onResolve);
+            callbacksOnReject.push(onReject);
 
             let t = Thenable();
             nextThenables.push(t);
@@ -36,10 +49,12 @@ function Thenable() {
         "execute": function(args) {
             for (let i = 0; i < callbacksOnResolve.length; ++i) {
                 const resolveSync = getResolveSyncIth(i);
+                const rejectSync = getRejectSyncIth(i);
 
                 if (isThenable(args)) {
-                    args.then(resolveSync);
+                    args.then(resolveSync, rejectSync);
                 } else {
+                    // TODO: when to run rejectSync here?
                     resolveSync(args);
                 }
             }
@@ -66,6 +81,7 @@ function Promise(action) {
             const onResolve = callbacksOnResolve[i];
             const thenable = thenables[i];
             if (onResolve !== undefined) {
+                // TODO: what if this throws?
                 const res = onResolve(arg);
                 thenable.execute(res);
             }
@@ -77,13 +93,18 @@ function Promise(action) {
             const onReject = callbacksOnReject[i];
             const thenable = thenables[i];
             if (onReject !== undefined) {
+                // TODO: what if this throws?
                 const res = onReject(arg);
                 thenable.execute(res);
             }
         }
     }; 
 
-    action(resolve, reject);
+    try {
+        action(resolve, reject);
+    } catch (e) {
+        reject(e);
+    }
 
     return {"then": then};
 }
