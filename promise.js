@@ -7,8 +7,6 @@ function isThenable(p) {
     return p !== undefined && typeof p.then === 'function';
 }
 
-// TODO: rename (maybe DelayedChainableFunction? but its also promise aware...)
-// TODO: allow multiple then's
 function Thenable() {
     let nextThenables = [];
     let callbacksOnExecute = [];
@@ -106,7 +104,6 @@ function run_test(name) {
 
 /*------------------- TESTS ----------------*/
 
-// TODO: failing now. fix it later
 register_test("simple", function() {
     const p = Promise(function(resolve, reject) {
         setTimeout(function() {
